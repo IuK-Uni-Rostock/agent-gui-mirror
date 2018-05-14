@@ -1,0 +1,3 @@
+[submodule "agent"]
+	path = agent
+	url = https://git.informatik.uni-rostock.de/mj244/sindabus-agent.git
