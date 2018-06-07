@@ -43,7 +43,7 @@ class MainWindow(object):
         self.__consoleOutput.setProperty("text", text)
 
     def show(self):
-        self.__appWindow.showFullScreen()
+        self.__appWindow.show()
 
     def start(self):
         worker = Worker(self.reader)
