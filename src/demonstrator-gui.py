@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import sys, os, subprocess
 from time import sleep
@@ -43,7 +43,7 @@ class MainWindow(object):
         self.__consoleOutput.setProperty("text", text)
 
     def show(self):
-        self.__appWindow.show()
+        self.__appWindow.showFullScreen()
 
     def start(self):
         worker = Worker(self.reader)
@@ -75,7 +75,7 @@ class MainWindow(object):
         if not os.path.exists(fifo_path):
             os.mkfifo(fifo_path)
 
-        with subprocess.Popen('agent --demo', shell=True) as agent:
+        with subprocess.Popen('agent --type 1 --input 0 --demo', shell=True) as agent:
             print("Opening FIFO...")
             sleep(2)
             with open(fifo_path) as fifo:

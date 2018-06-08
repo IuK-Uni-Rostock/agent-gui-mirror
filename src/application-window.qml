@@ -15,13 +15,29 @@ ApplicationWindow {
         id: grid
         anchors.fill: parent
         columns: 1
-        rows: 3
+        rows: 2
 
-        CircularGauge {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            objectName: "Gauge"
-            id: gauge
+        GridLayout {
+            id: grid2
+            anchors.fill: parent
+            columns: 2
+            rows: 1
+
+            CircularGauge {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                objectName: "Gauge"
+                id: gauge
+            }
+
+            TextEdit {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                id: placeholder
+                font.pointSize: 30
+                color: '#FFFFFF'
+                text: 'placeholder'
+            }
         }
 
         TextEdit {
