@@ -7,6 +7,14 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtQml import *
 
+class Telegram(object):
+    def __init__(self, timestamp, source_address, destination_address, is_group_address, payload_size):
+        self.timestamp = timestamp
+        self.source_address = source_address
+        self.destination_address = destination_address
+        self.is_group_address = is_group_address
+        self.payload_size = payload_size
+
 class WorkerSignals(QObject):
     progress = pyqtSignal(int, str)
 
@@ -26,29 +34,9 @@ class Worker(QRunnable):
     def run(self):
         self.fn(*self.args, **self.kwargs)
 
-class MainWindow(object):
-    def __init__(self):
-        self.__appEngine = QQmlApplicationEngine()
-        self.__appEngine.load("application-window.qml")
-        self.__appWindow = self.__appEngine.rootObjects()[0]
-        self.__gauge = self.__appWindow.findChild(QObject, "Gauge")
-        self.__consoleOutput = self.__appWindow.findChild(QObject, "ConsoleOutput")
-
-        #self.__appWindow.timerSignal.connect(self.update_gui)
-
-        self.threadpool = QThreadPool()
-
-    def update_gui(self, n, text):
-        self.__gauge.setProperty("value", n)
-        self.__consoleOutput.setProperty("text", text)
-
-    def show(self):
-        self.__appWindow.showFullScreen()
-
-    def start(self):
-        worker = Worker(self.reader)
-        worker.signals.progress.connect(self.update_gui)
-        self.threadpool.start(worker)
+class AgentQueue(object):
+    fifo_path = '/tmp/demo_fifo'
+    telegram_list = []
 
     def physical_area(self, address):
         return (address >> 12) & 15
@@ -69,16 +57,15 @@ class MainWindow(object):
         return address & 255
 
     def reader(self, progress_callback):
-        #agent_path = os.path.abspath(sys.path[0] + '/..')
-        fifo_path = '/tmp/demo_fifo'
+        if not os.path.exists(self.fifo_path):
+            os.mkfifo(self.fifo_path)
 
-        if not os.path.exists(fifo_path):
-            os.mkfifo(fifo_path)
-
+        #live: agent --type 1 --input 0 --demo
+        #dev: agent --type 3 --input /home/max/sindabus-demonstrator/src/knxlog_21_01_2017_to_21_02_2017.txt --demo
         with subprocess.Popen('agent --type 1 --input 0 --demo', shell=True) as agent:
             print("Opening FIFO...")
             sleep(2)
-            with open(fifo_path) as fifo:
+            with open(self.fifo_path) as fifo:
                 print("FIFO opened")
                 exporting_flows = False
                 while True:
@@ -108,14 +95,53 @@ class MainWindow(object):
                         is_group_address = fifo.readline().split("Is Group Address: ")[1]
                         fifo.readline() # element not needed
                         fifo.readline() # end of telegram
+
+                        # formatting
                         src_addr = repr(self.physical_area(int(src, 16))) + '.' + repr(self.physical_line(int(src, 16))) + '.' + repr(self.physical_device(int(src, 16)))
                         dest_addr = repr(self.group_main(int(dest, 16))) + '/' + repr(self.group_middle(int(dest, 16))) + '/' + repr(self.group_sub(int(dest, 16)))
                         output = "{0} ----- {2} Byte(s) ----> {1}".format(src_addr, dest_addr, int(payload_size))
-                        progress_callback.emit(int(payload_size) + 9, output)
+
+                        telegram = Telegram(time, src, dest, is_group_address, payload_size)
+                        self.telegram_list.append(telegram)
+                        self.telegram_list = list(filter(lambda a: a.timestamp == telegram.timestamp, self.telegram_list)) # keep only telegrams from current second
+
+                        knx_header_size = 9
+                        total_bytes = 0
+                        knx_maximum_load = 9600/8 # in bytes
+                        for t in self.telegram_list:
+                            total_bytes += knx_header_size + int(t.payload_size)
+                        progress_callback.emit(int(100 * (total_bytes / knx_maximum_load)), output)
+
+class MainWindow(object):
+    def __init__(self):
+        self.initInterface()
+        self.initBackgroundThread()
+
+    def initInterface(self):
+        self.__appEngine = QQmlApplicationEngine()
+        self.__appEngine.load("application-window.qml")
+        self.__appWindow = self.__appEngine.rootObjects()[0]
+        self.__gauge = self.__appWindow.findChild(QObject, "Gauge")
+        self.__consoleOutput = self.__appWindow.findChild(QObject, "ConsoleOutput")
+        self.__appWindow.showFullScreen()
+
+    def initBackgroundThread(self):
+        self.threadpool = QThreadPool()
+        q = AgentQueue()
+        worker = Worker(q.reader)
+        worker.signals.progress.connect(self.onTelegram)
+        self.threadpool.start(worker)
+
+    def onTelegram(self, n, text):
+        self.__gauge.setProperty("value", n)
+        lines = self.__consoleOutput.property("text").split('\n')
+        lines.insert(0, text) # insert at the beginning
+        if len(lines) == 4:
+            del lines[-1] # remove last element
+
+        self.__consoleOutput.setProperty("text", '\n'.join(lines))
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
-    window.show()
-    window.start()
     sys.exit(app.exec_())

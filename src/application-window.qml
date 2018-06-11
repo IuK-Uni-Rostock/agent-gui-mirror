@@ -2,14 +2,15 @@ import QtQuick 2.0
 import QtQuick.Extras 1.4
 import QtQuick.Controls 1.4
 import QtQuick.Layouts 1.3
+import "./Chart"
 
 ApplicationWindow {
-    width: 1920
-    height: 1080
     objectName: "DemonstratorWindow"
     title: "Demonstrator"
     id: demonstratorwindow
     color: '#343A40'
+    width: 1920
+    height: 1080
 
     GridLayout {
         id: grid
@@ -24,41 +25,55 @@ ApplicationWindow {
             rows: 1
 
             CircularGauge {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
                 objectName: "Gauge"
                 id: gauge
-            }
-
-            TextEdit {
+                maximumValue: 100
+                minimumValue: 0
+                stepSize: 1
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                id: placeholder
-                font.pointSize: 30
-                color: '#FFFFFF'
-                text: 'placeholder'
+            }
+
+            Chart {
+                width: 1200
+                height: 900
+                onPaint: {
+                    line({
+                        labels : ["30min","25min","20min","15min","10min","5min"],
+                        datasets : [
+                            {
+                                fillColor : "rgba(220,220,220,0.5)",
+                                strokeColor : "rgba(220,220,220,1)",
+                                pointColor : "rgba(220,220,220,1)",
+                                pointStrokeColor : "#fff",
+                                data : [65,59,90,81,56,55]
+                            }
+                        ]
+                    })
+                }
+                /*Timer {
+                    id:t
+                    interval: 100
+                    repeat: true
+                    running: true
+                    onTriggered: {
+                        test+=1
+                        requestPaint();
+                    }
+                }*/
             }
         }
 
         TextEdit {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
             objectName: "ConsoleOutput"
             id: consoleoutput
             readOnly: true
-            color: '#00FF00'
+            height: 90
+            Layout.fillWidth: true
+            color: '#FFFFFF'
             font.pointSize: 30
             text: '1.1.1 ---- 8 Byte(s) ----> 1/1/1'
             horizontalAlignment: TextEdit.AlignHCenter
         }
     }
-
-    /*
-    signal timerSignal();
-    Timer {
-        interval: 1000;
-        running: true;
-        repeat: true;
-        onTriggered: timerSignal()
-    }*/
 }
