@@ -9,5 +9,8 @@
 2. Download demonstrator-gui `git clone --recurse-submodules https://git.informatik.uni-rostock.de/mj244/sindabus-demonstrator.git`
 3. Follow instructions to install agent located at `sindabus-demonstrator/agent/doc/install.md`
 
+## Keep display active
+1. `sudo sed -i -e 's/#xserver-command=X/xserver-command=X -s 0 dpms/g' /etc/lightdm/lightdm.conf`
+
 ## Add to autostart
 1. TODO
