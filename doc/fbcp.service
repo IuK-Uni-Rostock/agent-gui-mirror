@@ -1,0 +1,10 @@
+[Unit]
+Description=fbcp
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=/usr/local/bin/fbcp
+Restart=always
+
+[Install]
+WantedBy=xsession.target
