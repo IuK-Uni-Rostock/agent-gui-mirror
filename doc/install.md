@@ -24,3 +24,4 @@
 4. Reload systemd `systemctl --user daemon-reload`
 5. Enable fbcp systemd service `systemctl --user enable fbcp.service`
 6. Enable autostart of all our created systemd services: `echo '@systemctl --no-block --user start xsession.target' >> ~/.config/lxsession/LXDE-pi/autostart`
+7. Enable autostart of Demonstrator GUI: `echo '@python3 ~/sindabus-demonstrator/src/demonstrator-gui.py' >> ~/.config/lxsession/LXDE-pi/autostart`

@@ -119,7 +119,8 @@ class MainWindow(object):
 
     def initInterface(self):
         self.__appEngine = QQmlApplicationEngine()
-        self.__appEngine.load("application-window.qml")
+        scriptPath = os.path.dirname(os.path.realpath(__file__))
+        self.__appEngine.load(os.path.join(scriptPath, "application-window.qml"))
         self.__appWindow = self.__appEngine.rootObjects()[0]
         self.__gauge = self.__appWindow.findChild(QObject, "Gauge")
         self.__consoleOutput = self.__appWindow.findChild(QObject, "ConsoleOutput")
