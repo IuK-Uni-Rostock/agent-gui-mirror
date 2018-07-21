@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import sys, os, subprocess
+import sys, os, subprocess, time
 from time import sleep
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -38,6 +38,7 @@ class AgentQueue(object):
     fifo_path = '/tmp/demo_fifo'
     telegram_list = []
     last_minute_tps = [] # Telegrams per second
+    minute_start = 0
 
     def physical_area(self, address):
         return (address >> 12) & 15
@@ -111,8 +112,8 @@ class AgentQueue(object):
                         output = "{0} ----- {2} Byte(s) ----> {1}".format(src_addr, dest_addr, int(payload_size))
 
                         telegram = Telegram(time, src, dest, is_group_address, payload_size)
-                        self.telegram_list.append(telegram)
                         list_length = len(self.telegram_list)
+                        self.telegram_list.append(telegram)
                         self.telegram_list = list(filter(lambda a: a.timestamp == telegram.timestamp, self.telegram_list)) # keep only telegrams from current second
 
                         bus_usage = self.calc_usage(self.telegram_list)
@@ -122,12 +123,19 @@ class AgentQueue(object):
                         average = 0
                         maximum = 0
                         minimum = 0
-                        if len(self.last_minute_tps) >= 60:
-                            average = int(sum(self.last_minute_tps) / len(self.last_minute_tps))
-                            maximum = int(max(self.last_minute_tps))
-                            minimum = int(min(self.last_minute_tps))
-                            minute_changed = True
-                            self.last_minute_tps.clear()
+                        if self.minute_start == 0:
+                            self.minute_start = int(time.time())
+                        if len(self.last_minute_tps) >= 60 or int(time.time()) - self.minute_start >= 60:
+                            if len(self.last_minute_tps) > 0:
+                                average = int(sum(self.last_minute_tps) / len(self.last_minute_tps))
+                                maximum = int(max(self.last_minute_tps))
+                                minimum = int(min(self.last_minute_tps))
+                                minute_changed = True
+                                self.minute_start = int(time.time())
+                                self.last_minute_tps.clear()
+                            else:
+                                minute_changed = True
+                                self.minute_start = int(time.time())
 
                         progress_callback.emit(bus_usage, output, minute_changed, average, maximum, minimum)
 
