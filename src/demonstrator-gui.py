@@ -16,7 +16,7 @@ class Telegram(object):
         self.payload_size = payload_size
 
 class WorkerSignals(QObject):
-    progress = pyqtSignal(int, str)
+    progress = pyqtSignal(int, str, bool, int, int, int)
 
 class Worker(QRunnable):
     def __init__(self, fn, *args, **kwargs):
@@ -37,6 +37,7 @@ class Worker(QRunnable):
 class AgentQueue(object):
     fifo_path = '/tmp/demo_fifo'
     telegram_list = []
+    last_minute_tps = [] # Telegrams per second
 
     def physical_area(self, address):
         return (address >> 12) & 15
@@ -55,6 +56,14 @@ class AgentQueue(object):
 
     def group_sub(self, address):
         return address & 255
+
+    def calc_usage(self, tlist):
+        knx_header_size = 9
+        total_bytes = 0
+        knx_maximum_load = 9600/8 # in bytes
+        for t in tlist:
+            total_bytes += knx_header_size + int(t.payload_size)
+        return int(100 * (total_bytes / knx_maximum_load))
 
     def reader(self, progress_callback):
         if not os.path.exists(self.fifo_path):
@@ -103,14 +112,24 @@ class AgentQueue(object):
 
                         telegram = Telegram(time, src, dest, is_group_address, payload_size)
                         self.telegram_list.append(telegram)
+                        list_length = len(self.telegram_list)
                         self.telegram_list = list(filter(lambda a: a.timestamp == telegram.timestamp, self.telegram_list)) # keep only telegrams from current second
 
-                        knx_header_size = 9
-                        total_bytes = 0
-                        knx_maximum_load = 9600/8 # in bytes
-                        for t in self.telegram_list:
-                            total_bytes += knx_header_size + int(t.payload_size)
-                        progress_callback.emit(int(100 * (total_bytes / knx_maximum_load)), output)
+                        bus_usage = self.calc_usage(self.telegram_list)
+                        if list_length != len(self.telegram_list):
+                            self.last_minute_tps.append(list_length)
+                        minute_changed = False
+                        average = 0
+                        maximum = 0
+                        minimum = 0
+                        if len(self.last_minute_tps) >= 60:
+                            average = int(sum(self.last_minute_tps) / len(self.last_minute_tps))
+                            maximum = int(max(self.last_minute_tps))
+                            minimum = int(min(self.last_minute_tps))
+                            minute_changed = True
+                            self.last_minute_tps.clear()
+
+                        progress_callback.emit(bus_usage, output, minute_changed, average, maximum, minimum)
 
 class MainWindow(object):
     def __init__(self):
@@ -123,6 +142,7 @@ class MainWindow(object):
         self.__appEngine.load(os.path.join(scriptPath, "application-window.qml"))
         self.__appWindow = self.__appEngine.rootObjects()[0]
         self.__gauge = self.__appWindow.findChild(QObject, "Gauge")
+        self.__chart = self.__appWindow.findChild(QObject, "Chart")
         self.__consoleOutput = self.__appWindow.findChild(QObject, "ConsoleOutput")
         self.__appWindow.showFullScreen()
 
@@ -133,7 +153,7 @@ class MainWindow(object):
         worker.signals.progress.connect(self.onTelegram)
         self.threadpool.start(worker)
 
-    def onTelegram(self, n, text):
+    def onTelegram(self, n, text, changed, average, maximum, minimum):
         self.__gauge.setProperty("value", n)
         lines = self.__consoleOutput.property("text").split('\n')
         lines.insert(0, text) # insert at the beginning
@@ -141,6 +161,9 @@ class MainWindow(object):
             del lines[-1] # remove last element
 
         self.__consoleOutput.setProperty("text", '\n'.join(lines))
+        if changed is True:
+            self.__chart.addDatapoint(average, maximum, minimum)
+        #QMetaObject.invokeMethod(self.__chart, "addDatapoint", Qt.DirectConnection, Q_ARG(QVariant, average))
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

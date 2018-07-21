@@ -35,32 +35,59 @@ ApplicationWindow {
             }
 
             Chart {
+                objectName: "Chart"
+                id: chart
                 width: 1200
                 height: 900
+                property var chartMeanData: [65,59,90,81,55]
+                property var chartMinData: [40,45,76,50,30]
+                property var chartMaxData: [90,70,98,86,78]
+                property var chartLabels: ["5min","4min","3min","2min","1min"]
+                property int maxData: 5
                 onPaint: {
                     line({
-                        labels : ["30min","25min","20min","15min","10min","5min"],
+                        labels : chartLabels,
                         datasets : [
                             {
                                 fillColor : "rgba(220,220,220,0.5)",
                                 strokeColor : "rgba(220,220,220,1)",
                                 pointColor : "rgba(220,220,220,1)",
                                 pointStrokeColor : "#fff",
-                                data : [65,59,90,81,56,55]
+                                data : chartMeanData
+                            },
+                            {
+                                fillColor : "rgba(151,187,205,0.5)",
+                                strokeColor : "rgba(151,187,205,1)",
+                                pointColor : "rgba(151,187,205,1)",
+                                pointStrokeColor : "#fff",
+                                data : chartMaxData
+                            },
+                            {
+                                fillColor : "rgba(100,110,205,0.5)",
+                                strokeColor : "rgba(100,110,205,1)",
+                                pointColor : "rgba(100,110,205,1)",
+                                pointStrokeColor : "#fff",
+                                data : chartMinData
                             }
                         ]
                     })
                 }
-                /*Timer {
-                    id:t
-                    interval: 100
-                    repeat: true
-                    running: true
-                    onTriggered: {
-                        test+=1
-                        requestPaint();
+
+                function addDatapoint(mean,max,min) {
+                    var newlen = chartMeanData.push(mean)
+                    if (newlen >= maxData) {
+                        chartMeanData = new Object(chartMeanData.slice(1))
                     }
-                }*/
+                    newlen = chartMaxData.push(max)
+                    if (newlen >= maxData) {
+                        chartMaxData = new Object(chartMaxData.slice(1))
+                    }
+                    newlen = chartMinData.push(min)
+                    if (newlen >= maxData) {
+                        chartMinData = new Object(chartMinData.slice(1))
+                    }
+                    requestPaint();
+                }
             }
         }
 
