@@ -74,7 +74,7 @@ class AgentQueue(object):
         #dev: agent --type 3 --input /home/max/sindabus-demonstrator/src/knxlog_21_01_2017_to_21_02_2017.txt --demo
         with subprocess.Popen('agent --type 1 --input 0 --demo', shell=True) as agent:
             print("Opening FIFO...")
-            sleep(2)
+            sleep(2) # wait 2 seconds for agent to start
             with open(self.fifo_path) as fifo:
                 print("FIFO opened")
                 exporting_flows = False
@@ -123,7 +123,6 @@ class AgentQueue(object):
                         average = 0
                         maximum = 0
                         minimum = 0
-                        print(output)
                         if self.minute_start == 0:
                             self.minute_start = int(time.time())
                         if len(self.last_minute_tps) >= 60 or int(time.time()) - self.minute_start >= 60:
