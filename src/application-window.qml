@@ -5,9 +5,9 @@ import QtQuick.Layouts 1.3
 import "./Chart"
 
 ApplicationWindow {
-    objectName: "DemonstratorWindow"
-    title: "Demonstrator"
-    id: demonstratorwindow
+    objectName: "AgentWindow"
+    title: "Agent GUI"
+    id: agentWindow
     color: '#343A40'
     width: 1920
     height: 1080

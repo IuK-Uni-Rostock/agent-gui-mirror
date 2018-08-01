@@ -71,7 +71,7 @@ class AgentQueue(object):
             os.mkfifo(self.fifo_path)
 
         #live: agent --type 1 --input 0 --demo
-        #dev: agent --type 3 --input /home/max/sindabus-demonstrator/src/knxlog_21_01_2017_to_21_02_2017.txt --demo
+        #dev: agent --type 3 --input /home/max/knx_dumps/knxlog_21_01_2017_to_21_02_2017.txt --demo
         with subprocess.Popen('agent --type 1 --input 0 --demo', shell=True) as agent:
             print("Opening FIFO...")
             sleep(2) # wait 2 seconds for agent to start
