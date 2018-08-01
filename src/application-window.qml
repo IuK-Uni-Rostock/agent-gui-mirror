@@ -39,9 +39,9 @@ ApplicationWindow {
                 id: chart
                 width: 1200
                 height: 900
-                property var chartMeanData: [65,59,90,81,55]
-                property var chartMinData: [40,45,76,50,30]
-                property var chartMaxData: [90,70,98,86,78]
+                property var chartMeanData: [0,0,0,0,0]
+                property var chartMinData: [0,0,0,0,0]
+                property var chartMaxData: [0,0,0,0,0]
                 property var chartLabels: ["5min","4min","3min","2min","1min"]
                 property int maxData: 5
                 onPaint: {

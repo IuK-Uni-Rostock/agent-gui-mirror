@@ -95,7 +95,7 @@ class AgentQueue(object):
                     if not exporting_flows and "--------------------------------------------" in data:
                         src = fifo.readline().split("Source Address: ")[1]
                         dest = fifo.readline().split("Destination Address: ")[1]
-                        time = fifo.readline().split("Start Time: ")[1]
+                        timestamp = fifo.readline().split("Start Time: ")[1]
                         fifo.readline() # element not needed
                         apci = fifo.readline().split("APCI: ")[1]
                         fifo.readline() # element not needed
@@ -111,7 +111,7 @@ class AgentQueue(object):
                         dest_addr = repr(self.group_main(int(dest, 16))) + '/' + repr(self.group_middle(int(dest, 16))) + '/' + repr(self.group_sub(int(dest, 16)))
                         output = "{0} ----- {2} Byte(s) ----> {1}".format(src_addr, dest_addr, int(payload_size))
 
-                        telegram = Telegram(time, src, dest, is_group_address, payload_size)
+                        telegram = Telegram(timestamp, src, dest, is_group_address, payload_size)
                         list_length = len(self.telegram_list)
                         self.telegram_list.append(telegram)
                         self.telegram_list = list(filter(lambda a: a.timestamp == telegram.timestamp, self.telegram_list)) # keep only telegrams from current second
@@ -123,6 +123,7 @@ class AgentQueue(object):
                         average = 0
                         maximum = 0
                         minimum = 0
+                        print(output)
                         if self.minute_start == 0:
                             self.minute_start = int(time.time())
                         if len(self.last_minute_tps) >= 60 or int(time.time()) - self.minute_start >= 60:
