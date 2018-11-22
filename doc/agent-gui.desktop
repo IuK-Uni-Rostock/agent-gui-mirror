@@ -3,5 +3,5 @@ Type=Application
 Name=Agent-GUI
 Comment=Agent-GUI
 NoDisplay=false
-Exec=/usr/bin/lxterminal -e /usr/bin/python3 /home/pi/sindabus-agent-gui/src/agent-gui.py
+Exec=/usr/bin/lxterminal -e /home/pi/agent-gui/src/agent-gui.py
 NotShowIn=GNOME;KDE;XFCE;
