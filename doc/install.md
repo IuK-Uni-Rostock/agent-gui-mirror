@@ -13,6 +13,8 @@
 1. Switch to rpi-fbcp directory `cd agent-gui/tools/rpi-fbcp`
 2. Compile `mkdir build && cd build && cmake .. && make`
 3. `sudo cp fbcp /usr/local/bin`
+4. Fix framebuffer width: `sudo sed -i -e 's/framebuffer_width=.*/framebuffer_width=1920/g' /boot/config.txt`
+5. Fix framebuffer height: `sudo sed -i -e 's/framebuffer_height=.*/framebuffer_height=1080/g' /boot/config.txt`
 
 ## 4. Keep display active
 1. `sudo sed -i -e 's/#xserver-command=X/xserver-command=X -s 0 dpms/g' /etc/lightdm/lightdm.conf`

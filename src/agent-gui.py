@@ -67,8 +67,9 @@ class AgentQueue(object):
         return int(100 * (total_bytes / knx_maximum_load))
 
     def reader(self, progress_callback):
-        if not os.path.exists(self.fifo_path):
-            os.mkfifo(self.fifo_path)
+        if os.path.exists(self.fifo_path):
+            os.remove(self.fifo_path)
+        os.mkfifo(self.fifo_path)
 
         #live: agent --type 1 --input 0 --demo
         #dev: agent --type 3 --input /home/max/knx_dumps/knxlog_21_01_2017_to_21_02_2017.txt --demo
