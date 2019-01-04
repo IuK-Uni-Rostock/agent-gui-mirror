@@ -15,6 +15,10 @@
 3. `sudo cp fbcp /usr/local/bin`
 4. Fix framebuffer width: `sudo sed -i -e 's/#framebuffer_width=.*/framebuffer_width=1920/g' /boot/config.txt`
 5. Fix framebuffer height: `sudo sed -i -e 's/#framebuffer_height=.*/framebuffer_height=1080/g' /boot/config.txt`
+6. Enable spi module: `sudo echo 'spi-bcm2835' >> /etc/modules`
+7. Enable fbtft module: `sudo echo 'fbtft_device' >> /etc/modules`
+8. Copy fbtft device configuration: `sudo cp agent-gui/doc/fbtft.conf /etc/modprobe.d`
+9. Reboot `sudo reboot`
 
 ## 4. Keep display active
 1. `sudo sed -i -e 's/#xserver-command=X/xserver-command=X -s 0 dpms/g' /etc/lightdm/lightdm.conf`
