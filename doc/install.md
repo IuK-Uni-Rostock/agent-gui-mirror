@@ -1,8 +1,7 @@
 # Installation on Raspberry Pi (any model)
 
 ## 1. Install dependencies
-1. Install GIT and Python3 package manager pip3 `sudo apt install git python3-pip`
-2. Install PyQt5 `pip3 install pyqt5`
+1. Install Git, Python3 and PyQt5: `sudo apt install git python3-pyqt5 pyqt5-dev python3-pyqt5.qtquick qml-module-qtquick2 qml-module-qtquick-controls qml-module-qtquick-extras qml-module-qtquick-layouts`
 
 ## 2. Install agent-gui
 1. Switch to home directory `cd ~`
