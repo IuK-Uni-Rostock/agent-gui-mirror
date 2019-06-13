@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-import sys, os, subprocess, time
-from time import sleep
+import sys, os, subprocess, time, shlex
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -35,7 +34,6 @@ class Worker(QRunnable):
         self.fn(*self.args, **self.kwargs)
 
 class AgentQueue(object):
-    fifo_path = '/tmp/demo_fifo'
     telegram_list = []
     last_minute_tps = [] # Telegrams per second
     minute_start = 0
@@ -67,78 +65,70 @@ class AgentQueue(object):
         return int(100 * (total_bytes / knx_maximum_load))
 
     def reader(self, progress_callback):
-        if os.path.exists(self.fifo_path):
-            os.remove(self.fifo_path)
-        os.mkfifo(self.fifo_path)
+        #live: agent --type 1 --input 0
+        #dev: agent --type 3 --input /home/max/knx_dumps/knxlog_21_01_2017_to_21_02_2017.txt
+        with subprocess.Popen(shlex.split('agent --type 1 --input 0'), stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True) as agent:
+            time.sleep(2) # wait 2 seconds for agent to start
+            exporting_flows = False
+            while True:
+                # no idea why all output is being redirected to stderr by kDriveExpress library
+                data = agent.stderr.readline()
+                if len(data) == 0:
+                    break
 
-        #live: agent --type 1 --input 0 --demo
-        #dev: agent --type 3 --input /home/max/knx_dumps/knxlog_21_01_2017_to_21_02_2017.txt --demo
-        with subprocess.Popen('agent --type 1 --input 0 --demo', shell=True) as agent:
-            print("Opening FIFO...")
-            sleep(2) # wait 2 seconds for agent to start
-            with open(self.fifo_path) as fifo:
-                print("FIFO opened")
-                exporting_flows = False
-                while True:
-                    data = fifo.readline()
-                    if len(data) == 0:
-                        print("FIFO closed")
-                        break
-                    data = data.replace("\\n", "")
+                if "Starting flow export" in data:
+                    exporting_flows = True
 
-                    if "Starting flow export" in data:
-                        exporting_flows = True
+                if "Finished flow export" in data:
+                    exporting_flows = False
 
-                    if "Finished flow export" in data:
-                        exporting_flows = False
+                # start of telegram
+                if not exporting_flows and "--------------------------------------------" in data:
+                    src = agent.stderr.readline().split("Source Address: ")[1]
+                    dest = agent.stderr.readline().split("Destination Address: ")[1]
+                    timestamp = agent.stderr.readline().split("Start Time: ")[1]
+                    agent.stderr.readline() # element not needed
+                    apci = agent.stderr.readline().split("APCI: ")[1]
+                    agent.stderr.readline() # element not needed
+                    payload_size = agent.stderr.readline().split("Byte Count: ")[1] # + 9 = total
+                    priority = agent.stderr.readline().split("Priority: ")[1]
+                    hop_count = agent.stderr.readline().split("Hop Count: ")[1]
+                    is_group_address = agent.stderr.readline().split("Is Group Address: ")[1]
+                    agent.stderr.readline() # element not needed
+                    agent.stderr.readline() # end of telegram
 
-                    # start of telegram
-                    if not exporting_flows and "--------------------------------------------" in data:
-                        src = fifo.readline().split("Source Address: ")[1]
-                        dest = fifo.readline().split("Destination Address: ")[1]
-                        timestamp = fifo.readline().split("Start Time: ")[1]
-                        fifo.readline() # element not needed
-                        apci = fifo.readline().split("APCI: ")[1]
-                        fifo.readline() # element not needed
-                        payload_size = fifo.readline().split("Byte Count: ")[1] # + 9 = total
-                        priority = fifo.readline().split("Priority: ")[1]
-                        hop_count = fifo.readline().split("Hop Count: ")[1]
-                        is_group_address = fifo.readline().split("Is Group Address: ")[1]
-                        fifo.readline() # element not needed
-                        fifo.readline() # end of telegram
+                    # formatting
+                    src_addr = repr(self.physical_area(int(src, 16))) + '.' + repr(self.physical_line(int(src, 16))) + '.' + repr(self.physical_device(int(src, 16)))
+                    dest_addr = repr(self.group_main(int(dest, 16))) + '/' + repr(self.group_middle(int(dest, 16))) + '/' + repr(self.group_sub(int(dest, 16)))
+                    output = "{0} ----- {2} Byte(s) ----> {1}".format(src_addr, dest_addr, int(payload_size))
 
-                        # formatting
-                        src_addr = repr(self.physical_area(int(src, 16))) + '.' + repr(self.physical_line(int(src, 16))) + '.' + repr(self.physical_device(int(src, 16)))
-                        dest_addr = repr(self.group_main(int(dest, 16))) + '/' + repr(self.group_middle(int(dest, 16))) + '/' + repr(self.group_sub(int(dest, 16)))
-                        output = "{0} ----- {2} Byte(s) ----> {1}".format(src_addr, dest_addr, int(payload_size))
+                    telegram = Telegram(timestamp, src, dest, is_group_address, payload_size)
+                    list_length = len(self.telegram_list)
+                    self.telegram_list.append(telegram)
+                    self.telegram_list = list(filter(lambda a: a.timestamp == telegram.timestamp, self.telegram_list)) # keep only telegrams from current second
 
-                        telegram = Telegram(timestamp, src, dest, is_group_address, payload_size)
-                        list_length = len(self.telegram_list)
-                        self.telegram_list.append(telegram)
-                        self.telegram_list = list(filter(lambda a: a.timestamp == telegram.timestamp, self.telegram_list)) # keep only telegrams from current second
-
-                        bus_usage = self.calc_usage(self.telegram_list)
-                        if list_length != len(self.telegram_list):
-                            self.last_minute_tps.append(list_length)
-                        minute_changed = False
-                        average = 0
-                        maximum = 0
-                        minimum = 0
-                        if self.minute_start == 0:
+                    bus_usage = self.calc_usage(self.telegram_list)
+                    if list_length != len(self.telegram_list):
+                        self.last_minute_tps.append(list_length)
+                    minute_changed = False
+                    average = 0
+                    maximum = 0
+                    minimum = 0
+                    if self.minute_start == 0:
+                        self.minute_start = int(time.time())
+                    if len(self.last_minute_tps) >= 60 or int(time.time()) - self.minute_start >= 60:
+                        if len(self.last_minute_tps) > 0:
+                            average = int(sum(self.last_minute_tps) / len(self.last_minute_tps))
+                            maximum = int(max(self.last_minute_tps))
+                            minimum = int(min(self.last_minute_tps))
+                            minute_changed = True
                             self.minute_start = int(time.time())
-                        if len(self.last_minute_tps) >= 60 or int(time.time()) - self.minute_start >= 60:
-                            if len(self.last_minute_tps) > 0:
-                                average = int(sum(self.last_minute_tps) / len(self.last_minute_tps))
-                                maximum = int(max(self.last_minute_tps))
-                                minimum = int(min(self.last_minute_tps))
-                                minute_changed = True
-                                self.minute_start = int(time.time())
-                                self.last_minute_tps.clear()
-                            else:
-                                minute_changed = True
-                                self.minute_start = int(time.time())
+                            self.last_minute_tps.clear()
+                        else:
+                            minute_changed = True
+                            self.minute_start = int(time.time())
 
-                        progress_callback.emit(bus_usage, output, minute_changed, average, maximum, minimum)
+                    progress_callback.emit(bus_usage, output, minute_changed, average, maximum, minimum)
 
 class MainWindow(object):
     def __init__(self):
